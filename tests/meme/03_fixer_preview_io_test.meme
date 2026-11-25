@@ -1,0 +1,60 @@
+use ../../fixer
+use ../../emitter
+
+test preview_writes_nothing_test:
+    create directory "tests/tmp"
+    define path as "tests/tmp/preview_target.meme"
+    define original as "define a as 1   \n    define b as 2 \t \n"
+    write file path with original
+
+    define res as preview_file(path)
+    assert res.has_error == false
+    assert res.canonical_text == "define a as 1\n    define b as 2\n"
+
+    # Assert file was NOT modified by preview
+    define current_content as read string from file path
+    assert current_content == original
+
+    delete file path
+
+test fix_rewrites_and_idempotent_test:
+    create directory "tests/tmp"
+    define path as "tests/tmp/fix_target.meme"
+    define messy as "\tdefine x as 10   \n\t\tdefine y as 20 \n"
+    write file path with messy
+
+    # First fix run: file is rewritten
+    define res1 as fix_file(path)
+    assert res1.has_error == false
+    assert res1.is_changed == true
+    assert res1.lines_count == 2
+
+    define fixed_content as read string from file path
+    assert fixed_content == " define x as 10\n  define y as 20\n"
+
+    # Second fix run: file is already canonical, not rewritten
+    define res2 as fix_file(path)
+    assert res2.has_error == false
+    assert res2.is_changed == false
+    assert res2.lines_count == 2
+
+    define second_content as read string from file path
+    assert second_content == fixed_content
+
+    delete file path
+
+test empty_file_preview_and_fix_test:
+    create directory "tests/tmp"
+    define path as "tests/tmp/empty_target.meme"
+    write file path with ""
+
+    define prev_res as preview_file(path)
+    assert prev_res.has_error == false
+    assert prev_res.canonical_text == ""
+
+    define fix_res as fix_file(path)
+    assert fix_res.has_error == false
+    assert fix_res.is_changed == false
+    assert fix_res.lines_count == 0
+
+    delete file path

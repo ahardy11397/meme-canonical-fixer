@@ -1,0 +1,51 @@
+use fixer
+
+function print_usage() -> Void:
+    print "Usage: fixer <command> [args]"
+    print "Commands:"
+    print "  fix <file.meme> [file2.meme ...]   Rewrite files with canonical layout"
+    print "  preview <file.meme>                Print canonical layout without writing"
+
+function run_cli() -> Void:
+    define argc: Int as argument count
+    if argc < 2:
+        call print_usage()
+        exit with code 1
+
+    define cmd: String as argument 1
+    if cmd == "fix":
+        if argc < 3:
+            print error "Usage: fixer fix <file.meme> [file2.meme ...]"
+            exit with code 1
+        for i from 2 to argc - 1:
+            define file_path: String as argument i
+            define res: FixResult as fix_file(file_path)
+            if res.has_error:
+                print error res.error_message
+                exit with code 1
+            if res.is_changed:
+                print file_path + ": fixed (" + text of res.lines_count + " lines)"
+            else:
+                print file_path + ": already canonical"
+        exit with code 0
+
+    if cmd == "preview":
+        if argc != 3:
+            print error "Usage: fixer preview <file.meme>"
+            exit with code 1
+        define file_path: String as argument 2
+        define res: PreviewResult as preview_file(file_path)
+        if res.has_error:
+            print error res.error_message
+            exit with code 1
+        define can_text: String as res.canonical_text
+        if length of string can_text > 0:
+            define to_print: String as slice can_text from 0 to (length of string can_text - 1)
+            print to_print
+        exit with code 0
+
+    print error "Unknown command: " + cmd
+    call print_usage()
+    exit with code 1
+
+call run_cli()

@@ -1,0 +1,45 @@
+use lexer
+use emitter
+
+record FixResult:
+    has_error: Bool
+    error_message: String
+    is_changed: Bool
+    lines_count: Int
+
+record PreviewResult:
+    has_error: Bool
+    error_message: String
+    canonical_text: String
+
+function fix_file(path: String) -> FixResult:
+    define content_opt: Optional<String> as read string from file path or else nothing
+    if content_opt is nothing:
+        return FixResult(has_error=true, error_message="Error: cannot read file: " + path, is_changed=false, lines_count=0)
+    define content: String as value of content_opt
+
+    define tokens: List<Token> as tokenize(content)
+    if token_has_error(tokens):
+        return FixResult(has_error=true, error_message=token_error_message(tokens), is_changed=false, lines_count=0)
+
+    define canonical_text: String as emit(tokens)
+    define num_lines: Int as count_lines(canonical_text)
+
+    if canonical_text == content:
+        return FixResult(has_error=false, error_message="", is_changed=false, lines_count=num_lines)
+
+    write file path with canonical_text
+    return FixResult(has_error=false, error_message="", is_changed=true, lines_count=num_lines)
+
+function preview_file(path: String) -> PreviewResult:
+    define content_opt: Optional<String> as read string from file path or else nothing
+    if content_opt is nothing:
+        return PreviewResult(has_error=true, error_message="Error: cannot read file: " + path, canonical_text="")
+    define content: String as value of content_opt
+
+    define tokens: List<Token> as tokenize(content)
+    if token_has_error(tokens):
+        return PreviewResult(has_error=true, error_message=token_error_message(tokens), canonical_text="")
+
+    define canonical_text: String as emit(tokens)
+    return PreviewResult(has_error=false, error_message="", canonical_text=canonical_text)

@@ -1,0 +1,34 @@
+use ../../emitter
+use ../../lexer
+
+test roundtrip_invariant_messy_fixture_test:
+    # Messy fixture: tabs, trailing spaces, blank lines, comments, strings with spaces and escapes, multi-char operators
+    define messy as "\t# Top level comment\n\ndefine msg: String as \"hello \\\"world\\\"\\n\"\n    if a == 10 and b != 20:\n\t\tdefine c as a <= b or b >= a\n        call do_work(c)   \n\n    return a -> b   \t \n"
+
+    define orig_toks as tokenize(messy)
+    assert not token_has_error(orig_toks)
+
+    define emitted as emit(orig_toks)
+    define emitted_toks as tokenize(emitted)
+    assert not token_has_error(emitted_toks)
+
+    define orig_stripped as strip_comments(orig_toks)
+    define emitted_stripped as strip_comments(emitted_toks)
+
+    assert are_tokens_identical(orig_stripped, emitted_stripped)
+
+test idempotence_messy_fixture_test:
+    define messy as "function calc(a: Int, b: Int) -> Int:   \n\n\tdefine total as a + b * 2\n    # check value\n    if total >= 100:\n        return total\n    return 0\n\n"
+    define emitted1 as emit(tokenize(messy))
+    define emitted2 as emit(tokenize(emitted1))
+    assert emitted1 == emitted2
+
+test already_canonical_byte_identical_test:
+    define canonical as "function add (a: Int, b: Int) -> Int:\n    return a + b\n"
+    define emitted as emit(tokenize(canonical))
+    assert emitted == canonical
+
+test blank_lines_preservation_test:
+    define with_blanks as "define a as 1\n\n\ndefine b as 2\n\ndefine c as 3\n"
+    define emitted as emit(tokenize(with_blanks))
+    assert emitted == with_blanks

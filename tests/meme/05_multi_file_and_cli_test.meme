@@ -1,0 +1,51 @@
+use ../../fixer
+
+test multi_file_fix_sequence_test:
+    create directory "tests/tmp"
+    define f1 as "tests/tmp/multi1.meme"
+    define f2 as "tests/tmp/multi2.meme"
+    write file f1 with "define a as 1   \n"
+    write file f2 with "\tdefine b as 2 \t\n"
+
+    define res1 as fix_file(f1)
+    define res2 as fix_file(f2)
+
+    assert res1.has_error == false
+    assert res1.is_changed == true
+    assert res1.lines_count == 1
+
+    assert res2.has_error == false
+    assert res2.is_changed == true
+    assert res2.lines_count == 1
+
+    # Verify both are fixed on disk
+    define c1 as read string from file f1
+    assert c1 == "define a as 1\n"
+
+    define c2 as read string from file f2
+    assert c2 == " define b as 2\n"
+
+    # Second fix: already canonical
+    define res1_again as fix_file(f1)
+    define res2_again as fix_file(f2)
+
+    assert res1_again.is_changed == false
+    assert res2_again.is_changed == false
+
+    delete file f1
+    delete file f2
+
+test multi_file_one_missing_test:
+    create directory "tests/tmp"
+    define f1 as "tests/tmp/exists.meme"
+    define f2 as "tests/tmp/missing_98765.meme"
+    write file f1 with "define x as 1\n"
+
+    define res1 as fix_file(f1)
+    define res2 as fix_file(f2)
+
+    assert res1.has_error == false
+    assert res2.has_error == true
+    assert res2.error_message starts with "Error: cannot read file: "
+
+    delete file f1

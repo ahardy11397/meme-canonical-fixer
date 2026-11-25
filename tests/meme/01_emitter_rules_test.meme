@@ -1,0 +1,92 @@
+use ../../emitter
+use ../../lexer
+
+test empty_input_test:
+    define tokens as tokenize("")
+    define out as emit(tokens)
+    assert out == ""
+
+test whitespace_only_input_test:
+    define tokens as tokenize("   \n\t  \n  ")
+    define out as emit(tokens)
+    assert out == ""
+
+test spacing_rules_parens_comma_dot_test:
+    # (a, b) stays (a, b)
+    define toks1 as tokenize("(a, b)")
+    define out1 as emit(toks1)
+    assert out1 == "(a, b)\n"
+
+    # a->b emitted as a -> b
+    define toks2 as tokenize("a->b")
+    define out2 as emit(toks2)
+    assert out2 == "a -> b\n"
+    define re_toks2 as tokenize(out2)
+    assert length of re_toks2 == 3
+    define arrow as re_toks2[1]
+    assert arrow.kind == "operator"
+    assert arrow.value == "->"
+
+    # x.y keeps no surrounding spaces
+    define toks3 as tokenize("x . y")
+    define out3 as emit(toks3)
+    assert out3 == "x.y\n"
+
+    # x.y.z keeps no surrounding spaces
+    define toks3b as tokenize("x . y . z")
+    define out3b as emit(toks3b)
+    assert out3b == "x.y.z\n"
+
+    # brackets [1, 2]
+    define toks4 as tokenize("[  1 ,  2  ]")
+    define out4 as emit(toks4)
+    assert out4 == "[1, 2]\n"
+
+    # colons and semicolons
+    define toks5 as tokenize("foo : Int ;")
+    define out5 as emit(toks5)
+    assert out5 == "foo: Int;\n"
+
+test indentation_preservation_test:
+    # 0, 4, 8 column indentation
+    define src as "record Point:\n    x: Int\n        nested: String\n"
+    define toks as tokenize(src)
+    define out as emit(toks)
+    assert out == "record Point:\n    x: Int\n        nested: String\n"
+
+    # Tabs in source normalize to spaces at token column
+    # \tx: Int has tab at col 0, so x is at col 1
+    # \t\t\t\tx: Int has 4 tabs, so x is at col 4
+    define tab_src as "\t\t\t\tx: Int\n"
+    define tab_toks as tokenize(tab_src)
+    define tab_out as emit(tab_toks)
+    assert tab_out == "    x: Int\n"
+
+test trailing_whitespace_stripped_test:
+    # Trailing spaces and tabs stripped on every line
+    define messy as "define a as 1   \n    define b as 2 \t \n"
+    define toks as tokenize(messy)
+    define out as emit(toks)
+    assert out == "define a as 1\n    define b as 2\n"
+
+test exactly_one_newline_at_eof_test:
+    # Input with no newline at EOF
+    define no_nl as "define x as 10"
+    define out1 as emit(tokenize(no_nl))
+    assert out1 == "define x as 10\n"
+
+    # Input with multiple trailing newlines at EOF
+    define multi_nl as "define x as 10\n\n\n\n"
+    define out2 as emit(tokenize(multi_nl))
+    assert out2 == "define x as 10\n"
+
+test comment_preservation_and_trailing_spaces_test:
+    # Standalone comment
+    define c1 as "# this is a comment   \n"
+    define out1 as emit(tokenize(c1))
+    assert out1 == "# this is a comment\n"
+
+    # Code followed by comment
+    define c2 as "define x as 1    # inline comment \t  \n"
+    define out2 as emit(tokenize(c2))
+    assert out2 == "define x as 1 # inline comment\n"

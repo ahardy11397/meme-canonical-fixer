@@ -1,3 +1,4 @@
+# Vendored from meme-tokenizer (self-hosting step 1).
 # lexer.meme - Token model and lexical analyzer for Memelang
 use keywords
 

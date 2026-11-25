@@ -1,3 +1,4 @@
+# Vendored from meme-tokenizer (self-hosting step 1).
 # keywords.meme - Memelang core keywords set and classifier
 
 function get_keywords() -> Set<String>:

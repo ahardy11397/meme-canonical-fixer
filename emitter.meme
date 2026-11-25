@@ -1,0 +1,126 @@
+use lexer
+
+function make_spaces(count: Int) -> String:
+    if count <= 0:
+        return ""
+    define s: String as ""
+    for i from 1 to count:
+        set s to s + " "
+    return s
+
+function strip_trailing(s: String) -> String:
+    define n: Int as length of string s
+    if n == 0:
+        return s
+    define end_idx: Int as n
+    while end_idx > 0:
+        define c: String as char at (end_idx - 1) of s
+        if c == " " or c == "\t" or c == "\r":
+            set end_idx to end_idx - 1
+        else:
+            break
+    if end_idx == n:
+        return s
+    if end_idx == 0:
+        return ""
+    return slice s from 0 to end_idx
+
+function needs_no_space_before(val: String) -> Bool:
+    if val == "," or val == ":" or val == ";" or val == ")" or val == "]" or val == "}" or val == ".":
+        return true
+    return false
+
+function needs_no_space_after(val: String) -> Bool:
+    if val == "(" or val == "[" or val == ".":
+        return true
+    return false
+
+function should_space_between(prev: Token, curr: Token) -> Bool:
+    if needs_no_space_before(curr.value):
+        return false
+    if needs_no_space_after(prev.value):
+        return false
+    return true
+
+function emit_line(toks: List<Token>) -> String:
+    if length of toks == 0:
+        return ""
+    define indent: String as make_spaces(toks[0].col)
+    define line_str: String as indent + toks[0].value
+    for i from 1 to length of toks - 1:
+        define prev_tok: Token as toks[i - 1]
+        define cur_tok: Token as toks[i]
+        if should_space_between(prev_tok, cur_tok):
+            set line_str to line_str + " " + cur_tok.value
+        else:
+            set line_str to line_str + cur_tok.value
+    return strip_trailing(line_str)
+
+function count_lines(text: String) -> Int:
+    define n: Int as length of string text
+    if n == 0:
+        return 0
+    define count: Int as 0
+    for i from 0 to n - 1:
+        if char at i of text == "\n":
+            set count to count + 1
+    if char at (n - 1) of text != "\n":
+        set count to count + 1
+    return count
+
+function emit(tokens: List<Token>) -> String:
+    if length of tokens == 0:
+        return ""
+    define out: String as ""
+    define last_emitted_line: Int as 0
+    define current_line_tokens: List<Token> as empty List<Token>
+    define current_line_num: Int as tokens[0].line
+
+    for each tok in tokens:
+        if tok.line == current_line_num:
+            append tok to current_line_tokens
+        else:
+            define blank_count: Int as current_line_num - last_emitted_line - 1
+            if blank_count > 0:
+                for b from 1 to blank_count:
+                    set out to out + "\n"
+            define line_text: String as emit_line(current_line_tokens)
+            set out to out + line_text + "\n"
+            set last_emitted_line to current_line_num
+
+            set current_line_num to tok.line
+            set current_line_tokens to empty List<Token>
+            append tok to current_line_tokens
+
+    if length of current_line_tokens > 0:
+        define blank_count: Int as current_line_num - last_emitted_line - 1
+        if blank_count > 0:
+            for b from 1 to blank_count:
+                set out to out + "\n"
+        define line_text: String as emit_line(current_line_tokens)
+        set out to out + line_text + "\n"
+
+    return out
+
+function canonicalize(source: String) -> String:
+    define tokens: List<Token> as tokenize(source)
+    if token_has_error(tokens):
+        return ""
+    return emit(tokens)
+
+function strip_comments(toks: List<Token>) -> List<Token>:
+    define kept: List<Token> as empty List<Token>
+    for each t in toks:
+        if t.kind != "comment":
+            append t to kept
+    return kept
+
+function are_tokens_identical(toks1: List<Token>, toks2: List<Token>) -> Bool:
+    if length of toks1 != length of toks2:
+        return false
+    for i from 0 to length of toks1 - 1:
+        define t1: Token as toks1[i]
+        define t2: Token as toks2[i]
+        if t1.kind != t2.kind or t1.value != t2.value:
+            return false
+    return true

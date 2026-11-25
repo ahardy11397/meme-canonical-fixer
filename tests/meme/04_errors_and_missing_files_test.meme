@@ -1,0 +1,36 @@
+use ../../fixer
+
+test missing_file_fix_error_test:
+    define path as "tests/tmp/non_existent_file_12345.meme"
+    define res as fix_file(path)
+    assert res.has_error == true
+    assert res.error_message starts with "Error: cannot read file: "
+    assert res.is_changed == false
+
+test missing_file_preview_error_test:
+    define path as "tests/tmp/non_existent_file_67890.meme"
+    define res as preview_file(path)
+    assert res.has_error == true
+    assert res.error_message starts with "Error: cannot read file: "
+
+test unterminated_string_error_test:
+    create directory "tests/tmp"
+    define path as "tests/tmp/unterminated.meme"
+    write file path with "define s as \"unterminated string\n"
+
+    define res as fix_file(path)
+    assert res.has_error == true
+    assert res.error_message starts with "Error: unterminated string literal"
+
+    delete file path
+
+test unexpected_character_error_test:
+    create directory "tests/tmp"
+    define path as "tests/tmp/bad_char.meme"
+    write file path with "define s as 1 @ 2\n"
+
+    define res as fix_file(path)
+    assert res.has_error == true
+    assert res.error_message starts with "Error: unexpected character '@'"
+
+    delete file path
